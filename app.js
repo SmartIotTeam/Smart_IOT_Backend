@@ -36,18 +36,21 @@ app.get('/', (req, res) => {
     });
 });
 
-app.get('/image_upload', upload.single('imageFile'), (req, res) => {
+app.post('/image_upload', upload.single('imageFile'), (req, res) => {
     const image_path = '/image/' + req.file.filename
-    conn.query(`insert into imageTable(image_path) value('${image_path}')`, (err, result) => {
+    const cloth_name = req.body.cloth_name
+    conn.query(`insert into imageTable(image_path, name) value('${image_path}', '${cloth_name}')`, (err, result) => {
         if (err) {
             res.json({ 'massage': err });
         } else {
-            conn.query(`select max(id) as mid from imageTable`, (err, result) => {
+            conn.query(`select max(id) as mid, count(id) as cid, name from imageTable`, (err, result) => {
                 if (err) {
                     res.json({ 'massage': err });
                 } else {
                     res.json({
-                        image_index : result[0].mid
+                        image_index : result[0].mid,
+                        count_id : result[0].cid,
+                        cloth_name : result[0].name
                     })
                 }
             })
@@ -55,7 +58,7 @@ app.get('/image_upload', upload.single('imageFile'), (req, res) => {
     })
 });
 
-let port = 8888;
+let port = process.env.PORT || 8888;
 app.listen(port, () => {
     console.log('server on! http://localhost:' + port);
 });
