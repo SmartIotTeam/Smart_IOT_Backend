@@ -1,22 +1,19 @@
-const mqtt = require("mqtt"),
-    client = mqtt.connect("mqtt://broker.hivemq.com:1883");
-const readline = require("readline"),
-    rl = readline.createInterface({
-        input: process.stdin,
-        output: process.stdout,
-    });
+const aedes = require("aedes")();
+const mqttBroker = require("net").createServer(aedes.handle);
+const mqttPort = 2500; // 📌 127.0.0.1
 
-let userNickName = "";
-const topic = "SmartIoT/sub";
-rl.question("Name : ", (name) => {
-    userNickName = name;
-    client.on("connect", (_) => console.log("Connect"));
-    client.publish("aSmartIoT/sub", JSON.stringify({ join: userNickName }));
-    client.subscribe(topic, { qos: 1 }, (_) => console.log("subscribe!"));
-    client.on("message", (topic, message) => {
-        const _data = JSON.parse(message.toString());
-        if (userNickName === _data.userNickName)
-            console.log(`[${topic}] ${_data.userNickName} : ${_data.chat}`);
-    });
+mqttBroker.on("connection", () => console.log(CONNECT));
+aedes.on("subscribe", (topic, client) => {
+  console.log("📌 Subscribe");
+  console.log(- topic : ${topic[0].topic} / QoS : ${topic[0].qos});
+  console.log(- client.id : ${client.id});
 });
-    client.publish(topic, JSON.stringify({ userNickName, chat: line }))
+aedes.on("publish", (packet, client) => {
+  if (!client) return;
+  console.log(
+    🔗 publish : ${packet.payload.toString()} - ${new Date().toISOString()}
+  );
+});
+mqttBroker.listen(mqttPort, () =>
+  console.log("MQTT broker listening", mqttPort)
+);

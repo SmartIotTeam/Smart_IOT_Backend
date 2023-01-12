@@ -41,12 +41,7 @@ let upload = multer({
 
 const topic = "SmartIoT/sub"
 
-client.on("connect", (_) => console.log("Connect"));
-    client.subscribe(topic, { qos: 1 }, (_) => console.log("subscribe!"));
-    client.on("message", (topic, message) => {
-        const _data = JSON.parse(message.toString());
-            console.log(`${_data.chat}`);
-    });
+let flag = "default";
 
 app.get('/', (req, res) => {
     res.status(200).json({
@@ -62,25 +57,33 @@ app.post('/image_upload', upload.single('imageFile'), (req, res) => {
         if (err) {
             res.json({ 'massage': err });
         } else {
-            conn.query(`select max(id) as mid, count(id) as cid, name from imageTable`, (err, result) => {
+            conn.query(`select max(id) as mid, count(id) as cid from imageTable`, (err, result) => {
                 if (err) {
                     res.json({ 'massage': err, success: false });
                 } else {
-		     client.publish(topic, `register ${result[0].mid}`)
-	             client.subscribe(topic, { qos: 1 }, (_data) => {
-		     if(_data != null) {
-			console.log("성공")
-		     } else {
-			console.log("실패")
-		    }
-	          });
-                    res.json({
-                        image_index : result[0].mid,
-                        count_id : result[0].cid,
-			image_path : image_path,
-			cloth_name : result[0].name,
-			success: true
-                    })
+		     const mid = result[0].mid
+		     const cid = result[0].cid
+		     client.publish(topic, `register ${mid}`)
+	             setTimeout(() => {
+	               console.log(flag)
+	               if(flag === "register") {
+	                 console.log("성공")
+	               } else {
+	                 res.json({message : "IOT하고 연동 실패", success : false})
+	               }
+                     }, 1000)
+
+		  console.log(mid)
+		  conn.query(`select name from imageTable where id = ${mid}`, (err, result) => {
+			if(err) res.json({message : err, success : false})
+			res.json({
+                         image_index : mid,
+                         count_id : cid,
+			 image_path : image_path,
+			 cloth_name : result[0].name,
+			 success: true
+                       })
+		  })
                 }
             })
         }
@@ -114,17 +117,30 @@ app.get('/get_items', (req, res) => {
 app.get('/random', (req, res) => {
 	const random_num = req.query.rnum
 	client.publish(topic, `ran ${random_num}`)
-	client.subscribe(topic, { qos: 1 }, (_data) => {
-		console.log(_data)
-		if(_data != null) {
-			return res.json({message : "IOT 디바이스와 통신 됨.", success : true})
-		} else {
-			return res.json({message : "IOT 디바이스와 통신 실패.", success : false})
-		}
-	});
+	setTimeout(() => {
+	  console.log(flag)
+	  if(flag === "random") {
+	     res.json({success : true})
+	  } else {
+	     res.json({success : false})
+	  }
+       }, 1000)
 })
+
+client.on('message', (topic, message, packet) => {
+	console.log("message is "+message+" topic is "+topic);
+	if(message == 'rancom') {
+		console.log("random complete");
+		flag = "random"
+	}
+	else if(message == 'com') {
+		console.log("register complete");
+		flag = "register"
+	}
+});
 
 let port = process.env.PORT || 8888;
 app.listen(port, () => {
+    client.subscribe("SmartIoT/pub", {qos:1});
     console.log('server on! http://localhost:' + port);
 });
